@@ -8,11 +8,21 @@ import os
 import time
 import subprocess
 import threading
+import json
 from datetime import datetime
 from collections import deque
 from flask import Flask, render_template, jsonify, request, send_from_directory
 
 app = Flask(__name__)
+
+# Try to import oracledb for Oracle DB connectivity testing
+try:
+    import oracledb
+    ORACLE_AVAILABLE = True
+    print("Oracle DB support enabled (oracledb module loaded)", flush=True)
+except ImportError:
+    ORACLE_AVAILABLE = False
+    print("Oracle DB support disabled (oracledb module not available)", flush=True)
 
 # Configuration
 DEFAULT_HOSTS = os.getenv('MONITORED_HOSTS', 'vcenter.skynetsystems.io,google.com,cloudflare.com').split(',')
@@ -24,8 +34,9 @@ MAX_HISTORY = int(86400 / CHECK_INTERVAL)
 
 print(f"Configuration: CHECK_INTERVAL={CHECK_INTERVAL}s, MAX_HISTORY={MAX_HISTORY} data points (24 hours)", flush=True)
 
-# Persistent host storage file
+# Persistent storage files
 HOST_FILE = '/tmp/monitored_hosts.txt'
+ORACLE_FILE = '/tmp/monitored_oracle_dbs.json'
 
 def load_hosts():
     """Load hosts from persistent storage or use defaults"""
@@ -56,9 +67,86 @@ def save_hosts():
     except Exception as e:
         print(f"Error saving hosts to file: {e}", flush=True)
 
+
+def load_oracle_dbs():
+    """Load Oracle DB configurations from persistent storage
+
+    Returns dict mapping name to config:
+    {
+        "prod-db": {"host": "db.example.com", "port": 1521, "service": "ORCL",
+                    "user": "monitor", "password": "***"}
+    }
+    """
+    if os.path.exists(ORACLE_FILE):
+        try:
+            with open(ORACLE_FILE, 'r') as f:
+                dbs = json.load(f)
+                if dbs:
+                    print(f"Loaded {len(dbs)} Oracle DBs from persistent storage", flush=True)
+                    return dbs
+        except Exception as e:
+            print(f"Error loading Oracle DBs from file: {e}", flush=True)
+    return {}
+
+
+def save_oracle_dbs():
+    """Save Oracle DB configurations to persistent storage"""
+    try:
+        with open(ORACLE_FILE, 'w') as f:
+            json.dump(oracle_dbs, f, indent=2)
+        print(f"Saved {len(oracle_dbs)} Oracle DBs to persistent storage", flush=True)
+    except Exception as e:
+        print(f"Error saving Oracle DBs to file: {e}", flush=True)
+
+
+def test_oracle_connection(config):
+    """Test Oracle DB connection and measure latency
+
+    Args:
+        config: dict with host, port, service, user, password
+
+    Returns:
+        latency in ms or None if connection failed
+    """
+    if not ORACLE_AVAILABLE:
+        print("Oracle DB module not available", flush=True)
+        return None
+
+    host = config['host']
+    port = config.get('port', 1521)
+    service = config['service']
+    user = config['user']
+    password = config['password']
+
+    dsn = f"{host}:{port}/{service}"
+
+    try:
+        start = time.time()
+        connection = oracledb.connect(user=user, password=password, dsn=dsn)
+        latency_ms = (time.time() - start) * 1000
+
+        # Run a simple query to verify connection is working
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1 FROM DUAL")
+        cursor.fetchone()
+        cursor.close()
+        connection.close()
+
+        print(f"Oracle DB latency to {host}:{port}/{service}: {latency_ms:.2f}ms", flush=True)
+        return latency_ms
+    except Exception as e:
+        print(f"Oracle DB connection to {host}:{port}/{service} failed: {e}", flush=True)
+        return None
+
+
 # In-memory storage for latency data
 monitored_hosts = load_hosts()  # Load from file or use defaults
 latency_data = {host: deque(maxlen=MAX_HISTORY) for host in monitored_hosts}
+
+# Oracle DB storage
+oracle_dbs = load_oracle_dbs()  # Load from file
+oracle_latency_data = {name: deque(maxlen=MAX_HISTORY) for name in oracle_dbs}
+
 lock = threading.Lock()
 monitor_thread_started = False
 
@@ -69,10 +157,11 @@ def start_monitor_thread():
     if not monitor_thread_started:
         print(f"=== STARTING LATENCY MONITOR ===", flush=True)
         print(f"Default hosts: {', '.join(monitored_hosts)}", flush=True)
+        print(f"Oracle DBs: {', '.join(oracle_dbs.keys()) if oracle_dbs else 'None'}", flush=True)
         print(f"Check interval: {CHECK_INTERVAL} seconds", flush=True)
         print(f"TCP port: {TCP_PORT}", flush=True)
         print(f"Data retention: {MAX_HISTORY} data points (24 hours)", flush=True)
-        
+
         monitor_thread = threading.Thread(target=monitor_latency, daemon=True)
         monitor_thread.start()
         monitor_thread_started = True
@@ -174,29 +263,47 @@ def ping_host(host, port=443):
 def monitor_latency():
     """Background thread to continuously monitor latency"""
     print("Monitor thread running...", flush=True)
-    
+
     while True:
         timestamp = datetime.now().isoformat()
-        
+
         # Get current list of hosts (thread-safe)
         with lock:
             hosts_to_check = list(monitored_hosts)
-        
+            oracle_dbs_to_check = dict(oracle_dbs)
+
+        # Check regular hosts
         for host in hosts_to_check:
             print(f"Checking latency for {host}...", flush=True)
             latency = ping_host(host, TCP_PORT)
-            
+
             with lock:
                 # Initialize deque for new hosts
                 if host not in latency_data:
                     latency_data[host] = deque(maxlen=MAX_HISTORY)
-                
+
                 latency_data[host].append({
                     'timestamp': timestamp,
                     'latency': latency,
                     'status': 'ok' if latency else 'down'
                 })
-        
+
+        # Check Oracle DBs
+        for name, config in oracle_dbs_to_check.items():
+            print(f"Checking Oracle DB latency for {name}...", flush=True)
+            latency = test_oracle_connection(config)
+
+            with lock:
+                # Initialize deque for new Oracle DBs
+                if name not in oracle_latency_data:
+                    oracle_latency_data[name] = deque(maxlen=MAX_HISTORY)
+
+                oracle_latency_data[name].append({
+                    'timestamp': timestamp,
+                    'latency': latency,
+                    'status': 'ok' if latency else 'down'
+                })
+
         print(f"Check complete. Sleeping for {CHECK_INTERVAL} seconds...", flush=True)
         time.sleep(CHECK_INTERVAL)
 
@@ -361,7 +468,7 @@ def remove_host():
         save_hosts()
     
     print(f"Removed host: {host}. Remaining hosts: {len(current_hosts)}", flush=True)
-    
+
     return jsonify({
         'success': True,
         'host': host,
@@ -369,6 +476,160 @@ def remove_host():
         'total_hosts': len(current_hosts),
         'note': 'Historical data preserved'
     })
+
+
+# ============== Oracle DB Endpoints ==============
+
+@app.route('/api/oracle', methods=['GET'])
+def get_oracle_dbs():
+    """Get list of monitored Oracle DBs and their latency data"""
+    global oracle_dbs
+    with lock:
+        # Reload from persistent storage
+        if os.path.exists(ORACLE_FILE):
+            try:
+                with open(ORACLE_FILE, 'r') as f:
+                    oracle_dbs = json.load(f)
+            except Exception as e:
+                print(f"Error reloading Oracle DBs: {e}", flush=True)
+
+        # Return DB info without passwords
+        dbs_info = {}
+        for name, config in oracle_dbs.items():
+            dbs_info[name] = {
+                'host': config['host'],
+                'port': config.get('port', 1521),
+                'service': config['service'],
+                'user': config['user']
+            }
+
+        # Get latency data
+        data_dict = {}
+        for name in oracle_dbs:
+            data_dict[name] = list(oracle_latency_data.get(name, []))
+
+        return jsonify({
+            'databases': dbs_info,
+            'data': data_dict,
+            'oracle_available': ORACLE_AVAILABLE,
+            'check_interval': CHECK_INTERVAL,
+            'max_history_hours': 24
+        })
+
+
+@app.route('/api/oracle/add', methods=['POST'])
+def add_oracle_db():
+    """Add a new Oracle DB to monitor"""
+    if not ORACLE_AVAILABLE:
+        return jsonify({'error': 'Oracle DB module not available. Install oracledb package.'}), 503
+
+    data = request.get_json()
+
+    required_fields = ['name', 'host', 'service', 'user', 'password']
+    for field in required_fields:
+        if not data or field not in data:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+
+    name = data['name'].strip()
+    if not name:
+        return jsonify({'error': 'Name cannot be empty'}), 400
+
+    if len(name) > 100:
+        return jsonify({'error': 'Name too long (max 100 chars)'}), 400
+
+    config = {
+        'host': data['host'].strip(),
+        'port': int(data.get('port', 1521)),
+        'service': data['service'].strip(),
+        'user': data['user'].strip(),
+        'password': data['password']
+    }
+
+    # Validate required fields
+    if not config['host'] or not config['service'] or not config['user']:
+        return jsonify({'error': 'Host, service, and user cannot be empty'}), 400
+
+    with lock:
+        if name in oracle_dbs:
+            return jsonify({'error': 'Database name already exists', 'name': name}), 409
+
+        oracle_dbs[name] = config
+        oracle_latency_data[name] = deque(maxlen=MAX_HISTORY)
+        save_oracle_dbs()
+
+    print(f"Added Oracle DB: {name} ({config['host']}:{config['port']}/{config['service']})", flush=True)
+
+    return jsonify({
+        'success': True,
+        'name': name,
+        'message': f'Now monitoring Oracle DB: {name}',
+        'total_dbs': len(oracle_dbs)
+    })
+
+
+@app.route('/api/oracle/remove', methods=['POST'])
+def remove_oracle_db():
+    """Remove an Oracle DB from monitoring"""
+    data = request.get_json()
+
+    if not data or 'name' not in data:
+        return jsonify({'error': 'Missing name parameter'}), 400
+
+    name = data['name'].strip()
+
+    with lock:
+        if name not in oracle_dbs:
+            return jsonify({'error': 'Database not found', 'name': name}), 404
+
+        del oracle_dbs[name]
+        # Keep historical data but stop monitoring
+        save_oracle_dbs()
+
+    print(f"Removed Oracle DB: {name}. Remaining: {len(oracle_dbs)}", flush=True)
+
+    return jsonify({
+        'success': True,
+        'name': name,
+        'message': f'Stopped monitoring Oracle DB: {name}',
+        'total_dbs': len(oracle_dbs),
+        'note': 'Historical data preserved'
+    })
+
+
+@app.route('/api/oracle/test', methods=['POST'])
+def test_oracle_db():
+    """Test Oracle DB connection without adding it to monitoring"""
+    if not ORACLE_AVAILABLE:
+        return jsonify({'error': 'Oracle DB module not available. Install oracledb package.'}), 503
+
+    data = request.get_json()
+
+    required_fields = ['host', 'service', 'user', 'password']
+    for field in required_fields:
+        if not data or field not in data:
+            return jsonify({'error': f'Missing required field: {field}'}), 400
+
+    config = {
+        'host': data['host'].strip(),
+        'port': int(data.get('port', 1521)),
+        'service': data['service'].strip(),
+        'user': data['user'].strip(),
+        'password': data['password']
+    }
+
+    latency = test_oracle_connection(config)
+
+    if latency is not None:
+        return jsonify({
+            'success': True,
+            'latency': latency,
+            'message': f'Connection successful ({latency:.2f}ms)'
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Connection failed. Check credentials and network connectivity.'
+        }), 400
 
 
 @app.route('/health')

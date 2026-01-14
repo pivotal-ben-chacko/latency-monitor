@@ -34,20 +34,9 @@
         }
 
         .fiserv-badge {
-            background: #FB6400;
-            padding: 10px 30px;
             display: flex;
             align-items: center;
-            border: 2px solid rgb(52, 64, 72);
-            border-radius: 4px;
             margin: 18px 0;
-        }
-
-        .fiserv-text {
-            font-size: 24px;
-            font-weight: 300;
-            color: white;
-            letter-spacing: 0.5px;
         }
 
         .header-divider {
@@ -332,6 +321,146 @@
         .footer a:hover {
             text-decoration: underline;
         }
+
+        /* Oracle DB Section Styles */
+        .oracle-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #237CB8;
+        }
+
+        .oracle-section h3 {
+            margin-bottom: 15px;
+            color: #333333;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-left: 4px solid #237CB8;
+            padding-left: 15px;
+        }
+
+        .oracle-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .oracle-form input {
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            color: #333;
+        }
+
+        .oracle-form input:focus {
+            outline: none;
+            border-color: #237CB8;
+        }
+
+        .oracle-form input::placeholder {
+            color: #999;
+        }
+
+        .oracle-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .oracle-buttons button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .oracle-buttons .btn-primary {
+            background: #237CB8;
+            color: white;
+        }
+
+        .oracle-buttons .btn-primary:hover {
+            background: #1a5c8a;
+            transform: translateY(-1px);
+        }
+
+        .oracle-buttons .btn-secondary {
+            background: #607d8b;
+            color: white;
+        }
+
+        .oracle-buttons .btn-secondary:hover {
+            background: #455a64;
+            transform: translateY(-1px);
+        }
+
+        .oracle-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #237CB8;
+        }
+
+        .oracle-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(35,124,184,0.2);
+        }
+
+        .oracle-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: white;
+            border: 2px solid #237CB8;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #333333;
+            font-weight: 600;
+        }
+
+        .oracle-tag .remove-btn {
+            background: #237CB8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            transition: background 0.2s ease;
+        }
+
+        .oracle-tag .remove-btn:hover {
+            background: #1a5c8a;
+        }
+
+        .oracle-info {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(to right, #FB6400, #237CB8);
+            margin: 40px 0;
+            border-radius: 2px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
@@ -340,7 +469,7 @@
     <div class="fiserv-header">
         <div class="header-bar">
             <div class="fiserv-badge">
-                <div class="fiserv-text">fiserv.</div>
+                <img src="/static/fiserv-logo.svg" alt="Fiserv" height="44">
             </div>
             <div class="header-divider"></div>
             <div class="app-title">Network Performance Monitoring Tool</div>
@@ -357,36 +486,70 @@
                     placeholder="Enter hostname or IP address (e.g., example.com, 192.168.1.1)" 
                     onkeypress="if(event.key==='Enter') addHost()"
                 >
-                <button onclick="addHost()">➕ Add Host</button>
+                <button onclick="addHost()"><span style="color: #344048;">+</span> Add Host</button>
             </div>
             <div id="hostTags" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
         </div>
+
+        <!-- Oracle DB Section -->
+        <div class="oracle-section">
+            <h3>Oracle Database Connections</h3>
+            <div class="oracle-form">
+                <input type="text" id="oracleName" placeholder="Connection Name (e.g., prod-db)">
+                <input type="text" id="oracleHost" placeholder="Host (e.g., db.example.com)">
+                <input type="number" id="oraclePort" placeholder="Port" value="1521">
+                <input type="text" id="oracleService" placeholder="Service Name (e.g., ORCL)">
+                <input type="text" id="oracleUser" placeholder="Username">
+                <input type="password" id="oraclePassword" placeholder="Password">
+            </div>
+            <div class="oracle-buttons">
+                <button class="btn-primary" onclick="addOracleDb()"><span style="color: white;">+</span> Add Database</button>
+                <button class="btn-secondary" onclick="testOracleConnection()">Test Connection</button>
+            </div>
+            <div id="oracleTags" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+
+        <div class="section-divider"></div>
 
         <div class="stats-grid" id="statsGrid">
             <div class="loading">Loading latency data...</div>
         </div>
 
         <div class="chart-container">
-            <h3 class="chart-title">Latency History</h3>
+            <h3 class="chart-title">Host Latency History</h3>
             <canvas id="latencyChart"></canvas>
+        </div>
+
+        <!-- Oracle DB Stats -->
+        <div class="stats-grid" id="oracleStatsGrid" style="display: none;"></div>
+
+        <div class="chart-container" id="oracleChartContainer" style="display: none;">
+            <h3 class="chart-title" style="border-left-color: #237CB8;">Oracle DB Latency History</h3>
+            <canvas id="oracleChart"></canvas>
         </div>
 
         <div class="info">
             <h3>API Endpoints</h3>
             <div class="info-item">
-                <strong>GET /api/latency</strong> - Get all latency data
-            </div>
-            <div class="info-item">
-                <strong>GET /api/latency/&lt;host&gt;</strong> - Get latency data for specific host
-            </div>
-            <div class="info-item">
-                <strong>GET /api/current</strong> - Get current latency for all hosts
+                <strong>GET /api/latency</strong> - Get all host latency data
             </div>
             <div class="info-item">
                 <strong>POST /api/hosts/add</strong> - Add a new host to monitor
             </div>
             <div class="info-item">
                 <strong>POST /api/hosts/remove</strong> - Remove a host from monitoring
+            </div>
+            <div class="info-item" style="border-left-color: #237CB8;">
+                <strong>GET /api/oracle</strong> - Get all Oracle DB latency data
+            </div>
+            <div class="info-item" style="border-left-color: #237CB8;">
+                <strong>POST /api/oracle/add</strong> - Add Oracle DB (name, host, port, service, user, password)
+            </div>
+            <div class="info-item" style="border-left-color: #237CB8;">
+                <strong>POST /api/oracle/remove</strong> - Remove Oracle DB from monitoring
+            </div>
+            <div class="info-item" style="border-left-color: #237CB8;">
+                <strong>POST /api/oracle/test</strong> - Test Oracle DB connection
             </div>
             <div class="info-item">
                 <strong>Check Interval:</strong> {{ interval }} seconds | <strong>Data Retention:</strong> 24 hours
@@ -510,6 +673,281 @@
             if (status === 'ok') return 'status-ok';
             if (status === 'down') return 'status-down';
             return 'status-unknown';
+        }
+
+        // ============== Oracle DB Functions ==============
+        let oracleChart = null;
+
+        function renderOracleTags() {
+            fetch('/api/oracle')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('oracleTags');
+                    container.innerHTML = '';
+
+                    const dbNames = Object.keys(data.databases || {});
+                    dbNames.forEach(name => {
+                        const db = data.databases[name];
+                        const tag = document.createElement('div');
+                        tag.className = 'oracle-tag';
+                        tag.innerHTML = `
+                            <span>${name}</span>
+                            <span class="oracle-info">(${db.host}:${db.port}/${db.service})</span>
+                            <button class="remove-btn" onclick="removeOracleDb('${name}')" title="Remove ${name}">✕</button>
+                        `;
+                        container.appendChild(tag);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading Oracle DBs:', error);
+                });
+        }
+
+        function getOracleFormData() {
+            return {
+                name: document.getElementById('oracleName').value.trim(),
+                host: document.getElementById('oracleHost').value.trim(),
+                port: parseInt(document.getElementById('oraclePort').value) || 1521,
+                service: document.getElementById('oracleService').value.trim(),
+                user: document.getElementById('oracleUser').value.trim(),
+                password: document.getElementById('oraclePassword').value
+            };
+        }
+
+        function clearOracleForm() {
+            document.getElementById('oracleName').value = '';
+            document.getElementById('oracleHost').value = '';
+            document.getElementById('oraclePort').value = '1521';
+            document.getElementById('oracleService').value = '';
+            document.getElementById('oracleUser').value = '';
+            document.getElementById('oraclePassword').value = '';
+        }
+
+        function testOracleConnection() {
+            const data = getOracleFormData();
+
+            if (!data.host || !data.service || !data.user || !data.password) {
+                showNotification('Please fill in host, service, user, and password', 'error');
+                return;
+            }
+
+            showNotification('Testing connection...', 'success');
+
+            fetch('/api/oracle/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification(result.error || 'Connection failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error testing connection:', error);
+                showNotification('Error testing connection', 'error');
+            });
+        }
+
+        function addOracleDb() {
+            const data = getOracleFormData();
+
+            if (!data.name) {
+                showNotification('Please enter a connection name', 'error');
+                return;
+            }
+            if (!data.host || !data.service || !data.user || !data.password) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            fetch('/api/oracle/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    clearOracleForm();
+                    renderOracleTags();
+                    setTimeout(updateOracleDashboard, 1000);
+                } else {
+                    showNotification(result.error || 'Failed to add database', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding Oracle DB:', error);
+                showNotification('Error adding database', 'error');
+            });
+        }
+
+        function removeOracleDb(name) {
+            if (!confirm(`Stop monitoring Oracle DB "${name}"?\n\nHistorical data will be preserved.`)) {
+                return;
+            }
+
+            fetch('/api/oracle/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    renderOracleTags();
+                    setTimeout(updateOracleDashboard, 1000);
+                } else {
+                    showNotification(result.error || 'Failed to remove database', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error removing Oracle DB:', error);
+                showNotification('Error removing database', 'error');
+            });
+        }
+
+        function updateOracleDashboard() {
+            fetch('/api/oracle')
+                .then(response => response.json())
+                .then(data => {
+                    const dbNames = Object.keys(data.databases || {});
+                    const statsGrid = document.getElementById('oracleStatsGrid');
+                    const chartContainer = document.getElementById('oracleChartContainer');
+
+                    if (dbNames.length === 0) {
+                        statsGrid.style.display = 'none';
+                        chartContainer.style.display = 'none';
+                        return;
+                    }
+
+                    statsGrid.style.display = 'grid';
+                    chartContainer.style.display = 'block';
+
+                    updateOracleStats(data);
+                    updateOracleChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching Oracle data:', error);
+                });
+        }
+
+        function updateOracleStats(data) {
+            const statsGrid = document.getElementById('oracleStatsGrid');
+            statsGrid.innerHTML = '';
+
+            for (const name of Object.keys(data.databases || {})) {
+                const dbData = data.data[name] || [];
+                const dbInfo = data.databases[name];
+
+                let latest;
+                if (dbData.length === 0) {
+                    latest = { timestamp: null, latency: null, status: 'unknown' };
+                } else {
+                    latest = dbData[dbData.length - 1];
+                }
+
+                const card = document.createElement('div');
+                card.className = 'oracle-card';
+
+                const latencyValue = (latest.latency !== null && latest.latency !== undefined)
+                    ? latest.latency.toFixed(2)
+                    : 'N/A';
+                const statusClass = getStatusClass(latest.status);
+
+                card.innerHTML = `
+                    <div class="host-name">
+                        ${name}
+                        <span class="status-indicator ${statusClass}"></span>
+                    </div>
+                    <div class="oracle-info" style="margin-bottom: 10px;">
+                        ${dbInfo.host}:${dbInfo.port}/${dbInfo.service}
+                    </div>
+                    <div class="latency-display" style="color: #237CB8;">
+                        ${latencyValue}
+                        <span class="latency-unit">ms</span>
+                    </div>
+                    <div class="last-updated">
+                        ${latest.timestamp ? 'Last updated: ' + new Date(latest.timestamp).toLocaleTimeString() : 'Waiting for data...'}
+                    </div>
+                `;
+
+                statsGrid.appendChild(card);
+            }
+        }
+
+        function updateOracleChart(data) {
+            const ctx = document.getElementById('oracleChart').getContext('2d');
+            const dbNames = Object.keys(data.databases || {});
+
+            const datasets = dbNames.map((name, index) => {
+                const dbData = data.data[name] || [];
+                const colors = ['#237CB8', '#1a5c8a', '#0d3d5c', '#4a9fd4'];
+
+                const validData = dbData
+                    .filter(d => d && d.latency !== null && d.latency !== undefined)
+                    .map(d => ({ x: new Date(d.timestamp), y: d.latency }));
+
+                return {
+                    label: name,
+                    data: validData,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '15',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    borderWidth: 3,
+                    pointBackgroundColor: colors[index % colors.length],
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                };
+            });
+
+            if (oracleChart) {
+                oracleChart.destroy();
+            }
+
+            oracleChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
+                            title: { display: true, text: 'Time', color: '#333333' },
+                            ticks: { color: '#666' },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Latency (ms)', color: '#333333' },
+                            beginAtZero: true,
+                            ticks: { color: '#666', callback: v => v.toFixed(1) + ' ms' },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#333333' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                            borderColor: '#237CB8',
+                            borderWidth: 2,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} ms`
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function updateDashboard() {
@@ -756,10 +1194,13 @@
 
         // Initial load
         renderHostTags();
+        renderOracleTags();
         updateDashboard();
+        updateOracleDashboard();
 
         // Auto-refresh
         setInterval(updateDashboard, checkInterval);
+        setInterval(updateOracleDashboard, checkInterval);
     </script>
 </body>
 </html>
