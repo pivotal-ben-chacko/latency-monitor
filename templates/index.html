@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latency Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .fiserv-header {
+            background: rgb(52, 64, 72);
+            color: white;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .header-bar {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            height: 80px;
+        }
+
+        .fiserv-badge {
+            background: #FB6400;
+            padding: 10px 30px;
+            display: flex;
+            align-items: center;
+            border: 2px solid rgb(52, 64, 72);
+            border-radius: 4px;
+            margin: 18px 0;
+        }
+
+        .fiserv-text {
+            font-size: 24px;
+            font-weight: 300;
+            color: white;
+            letter-spacing: 0.5px;
+        }
+
+        .header-divider {
+            width: 2px;
+            height: 40px;
+            background: #607d8b;
+        }
+
+        .app-title {
+            font-size: 24px;
+            font-weight: 400;
+            color: white;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .manage-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .manage-section h3 {
+            margin-bottom: 15px;
+            color: #333333;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-left: 4px solid #FB6400;
+            padding-left: 15px;
+        }
+
+        .host-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .host-input-group input {
+            flex: 1;
+            min-width: 300px;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            color: #333;
+        }
+
+        .host-input-group input:focus {
+            outline: none;
+            border-color: #FB6400;
+        }
+
+        .host-input-group button {
+            padding: 12px 24px;
+            background: #FB6400;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .host-input-group button:hover {
+            background: #D84315;
+            transform: translateY(-1px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .host-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #FB6400;
+        }
+
+        .host-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(251,100,0,0.2);
+        }
+
+        .host-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-ok {
+            background: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+        }
+
+        .status-down {
+            background: #f44336;
+            box-shadow: 0 0 8px #f44336;
+        }
+
+        .status-unknown {
+            background: #9e9e9e;
+        }
+
+        .latency-display {
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #FB6400;
+            margin: 20px 0;
+        }
+
+        .latency-unit {
+            font-size: 0.35em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            color: #333333;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-left: 4px solid #FB6400;
+            padding-left: 15px;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+
+        .info {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+
+        .info h3 {
+            color: #333333;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-left: 4px solid #FB6400;
+            padding-left: 15px;
+        }
+
+        .info-item {
+            padding: 12px;
+            border-left: 3px solid #FB6400;
+            margin: 10px 0;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 1.2em;
+            padding: 50px;
+        }
+
+        .last-updated {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        .host-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: white;
+            border: 2px solid #FB6400;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #333333;
+            font-weight: 600;
+        }
+
+        .host-tag .remove-btn {
+            background: #FB6400;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            transition: background 0.2s ease;
+        }
+
+        .host-tag .remove-btn:hover {
+            background: #D84315;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            font-weight: 500;
+        }
+
+        .notification.success {
+            border-left: 4px solid #4CAF50;
+            color: #333333;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f44336;
+            color: #333333;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #FB6400;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <div class="fiserv-header">
+        <div class="header-bar">
+            <div class="fiserv-badge">
+                <div class="fiserv-text">fiserv.</div>
+            </div>
+            <div class="header-divider"></div>
+            <div class="app-title">Network Performance Monitoring Tool</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="manage-section">
+            <h3>Manage Monitored Hosts</h3>
+            <div class="host-input-group">
+                <input 
+                    type="text" 
+                    id="newHostInput" 
+                    placeholder="Enter hostname or IP address (e.g., example.com, 192.168.1.1)" 
+                    onkeypress="if(event.key==='Enter') addHost()"
+                >
+                <button onclick="addHost()">➕ Add Host</button>
+            </div>
+            <div id="hostTags" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">Loading latency data...</div>
+        </div>
+
+        <div class="chart-container">
+            <h3 class="chart-title">Latency History</h3>
+            <canvas id="latencyChart"></canvas>
+        </div>
+
+        <div class="info">
+            <h3>API Endpoints</h3>
+            <div class="info-item">
+                <strong>GET /api/latency</strong> - Get all latency data
+            </div>
+            <div class="info-item">
+                <strong>GET /api/latency/&lt;host&gt;</strong> - Get latency data for specific host
+            </div>
+            <div class="info-item">
+                <strong>GET /api/current</strong> - Get current latency for all hosts
+            </div>
+            <div class="info-item">
+                <strong>POST /api/hosts/add</strong> - Add a new host to monitor
+            </div>
+            <div class="info-item">
+                <strong>POST /api/hosts/remove</strong> - Remove a host from monitoring
+            </div>
+            <div class="info-item">
+                <strong>Check Interval:</strong> {{ interval }} seconds | <strong>Data Retention:</strong> 24 hours
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2026 Fiserv, Inc. All rights reserved. | Network Performance Monitoring Tool</p>
+    </div>
+
+    <script>
+        let chart = null;
+        const checkInterval = {{ interval }} * 1000;
+
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Host management functions
+        function renderHostTags() {
+            fetch('/api/hosts')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('hostTags');
+                    container.innerHTML = '';
+                    
+                    data.hosts.forEach(host => {
+                        const tag = document.createElement('div');
+                        tag.className = 'host-tag';
+                        tag.innerHTML = `
+                            <span>${host}</span>
+                            <button class="remove-btn" onclick="removeHost('${host}')" title="Remove ${host}">✕</button>
+                        `;
+                        container.appendChild(tag);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading hosts:', error);
+                });
+        }
+
+        function addHost() {
+            const input = document.getElementById('newHostInput');
+            const host = input.value.trim();
+            
+            if (!host) {
+                showNotification('Please enter a hostname or IP address', 'error');
+                return;
+            }
+            
+            // Basic validation
+            if (host.length > 253) {
+                showNotification('Hostname is too long', 'error');
+                return;
+            }
+            
+            fetch('/api/hosts/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ host: host })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Now monitoring ${host}`, 'success');
+                    input.value = '';
+                    renderHostTags();
+                    // Refresh dashboard to show new host
+                    setTimeout(updateDashboard, 1000);
+                } else {
+                    showNotification(data.error || 'Failed to add host', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding host:', error);
+                showNotification('Error adding host', 'error');
+            });
+        }
+
+        function removeHost(host) {
+            if (!confirm(`Stop monitoring ${host}?\n\nHistorical data will be preserved but no new data will be collected.`)) {
+                return;
+            }
+            
+            fetch('/api/hosts/remove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ host: host })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Stopped monitoring ${host}`, 'success');
+                    renderHostTags();
+                    // Refresh dashboard
+                    setTimeout(updateDashboard, 1000);
+                } else {
+                    showNotification(data.error || 'Failed to remove host', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error removing host:', error);
+                showNotification('Error removing host', 'error');
+            });
+        }
+
+        function getStatusClass(status) {
+            if (status === 'ok') return 'status-ok';
+            if (status === 'down') return 'status-down';
+            return 'status-unknown';
+        }
+
+        function updateDashboard() {
+            console.log('Fetching latency data...');
+            fetch('/api/latency')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data);
+                    console.log('Number of hosts:', data.hosts.length);
+                    
+                    // Log data for each host
+                    data.hosts.forEach(host => {
+                        const hostData = data.data[host];
+                        console.log(`${host}: ${hostData ? hostData.length : 0} data points`);
+                    });
+                    
+                    updateStats(data);
+                    updateChart(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('statsGrid').innerHTML = 
+                        '<div style="color: red; padding: 20px;">Error loading data: ' + error.message + '</div>';
+                });
+        }
+
+        function updateStats(data) {
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = '';
+
+            for (const host of data.hosts) {
+                const hostData = data.data[host];
+                
+                // Handle new hosts with no data yet
+                let latest;
+                if (!hostData || hostData.length === 0) {
+                    latest = {
+                        timestamp: new Date().toISOString(),
+                        latency: null,
+                        status: 'unknown'
+                    };
+                } else {
+                    latest = hostData[hostData.length - 1];
+                }
+                
+                const card = document.createElement('div');
+                card.className = 'host-card';
+                
+                const latencyValue = (latest.latency !== null && latest.latency !== undefined) 
+                    ? latest.latency.toFixed(2) 
+                    : 'N/A';
+                const statusClass = getStatusClass(latest.status);
+                
+                card.innerHTML = `
+                    <div class="host-name">
+                        ${host}
+                        <span class="status-indicator ${statusClass}"></span>
+                    </div>
+                    <div class="latency-display">
+                        ${latencyValue}
+                        <span class="latency-unit">ms</span>
+                    </div>
+                    <div class="last-updated">
+                        ${latest.timestamp ? 'Last updated: ' + new Date(latest.timestamp).toLocaleTimeString() : 'Waiting for data...'}
+                    </div>
+                `;
+                
+                statsGrid.appendChild(card);
+            }
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('latencyChart').getContext('2d');
+            
+            const datasets = data.hosts.map((host, index) => {
+                const hostData = data.data[host] || [];  // Handle missing data
+                // Fiserv brand color palette
+                const colors = [
+                    '#237CB8',  // Blue - RGB(35, 124, 184)
+                    '#FB6400',  // Orange - RGB(251, 100, 0)
+                    '#344048',  // Dark Gray - RGB(52, 64, 72)
+                    '#237CB8',  // Blue (repeat for more hosts)
+                    '#FB6400',  // Orange (repeat)
+                    '#344048',  // Dark Gray (repeat)
+                    '#237CB8',  // Blue (repeat)
+                    '#FB6400'   // Orange (repeat)
+                ];
+                
+                // Filter out null values and format for Chart.js
+                const validData = hostData
+                    .filter(d => d && d.latency !== null && d.latency !== undefined)
+                    .map(d => ({
+                        x: new Date(d.timestamp),
+                        y: d.latency
+                    }));
+                
+                return {
+                    label: host,
+                    data: validData,
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length] + '15',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    borderWidth: 3,
+                    pointBackgroundColor: colors[index % colors.length],
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                };
+            });
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            try {
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'minute',
+                                    displayFormats: {
+                                        minute: 'HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time',
+                                    font: {
+                                        size: 14,
+                                        weight: '600',
+                                        family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif"
+                                    },
+                                    color: '#333333'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45,
+                                    color: '#666',
+                                    font: {
+                                        size: 11
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)',
+                                    drawBorder: false
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Latency (ms)',
+                                    font: {
+                                        size: 14,
+                                        weight: '600',
+                                        family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif"
+                                    },
+                                    color: '#333333'
+                                },
+                                beginAtZero: true,
+                                ticks: {
+                                    color: '#666',
+                                    font: {
+                                        size: 11
+                                    },
+                                    callback: function(value) {
+                                        return value.toFixed(1) + ' ms';
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)',
+                                    drawBorder: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#333333',
+                                    font: {
+                                        size: 13,
+                                        weight: '600',
+                                        family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif"
+                                    },
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(26, 26, 26, 0.95)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#FB6400',
+                                borderWidth: 2,
+                                padding: 12,
+                                titleFont: {
+                                    size: 13,
+                                    weight: '600'
+                                },
+                                bodyFont: {
+                                    size: 12
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.parsed.y.toFixed(2) + ' ms';
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Chart created successfully with', datasets.length, 'datasets');
+            } catch (error) {
+                console.error('Error creating chart:', error);
+                document.getElementById('latencyChart').parentElement.innerHTML = 
+                    '<p style="color: red; padding: 20px;">Error creating chart: ' + error.message + 
+                    '<br>Check browser console for details.</p>';
+            }
+        }
+
+        // Initial load
+        renderHostTags();
+        updateDashboard();
+
+        // Auto-refresh
+        setInterval(updateDashboard, checkInterval);
+    </script>
+</body>
+</html>

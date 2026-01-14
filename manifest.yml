@@ -1,0 +1,18 @@
+---
+applications:
+- name: latency-monitor
+  memory: 256M
+  instances: 1
+  buildpack: python_buildpack
+  command: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1
+  health-check-type: http
+  health-check-http-endpoint: /health
+  timeout: 180
+  env:
+    # Comma-separated list of default hosts to monitor (can be changed via UI)
+    MONITORED_HOSTS: vcenter.skynetsystems.io,google.com,cloudflare.com
+    # Check interval in seconds (affects data resolution and storage)
+    CHECK_INTERVAL: 60
+    # TCP port to use for latency checks (80 for HTTP, 443 for HTTPS)
+    TCP_PORT: 443
+    # Note: History is automatically set to 24 hours based on CHECK_INTERVAL
